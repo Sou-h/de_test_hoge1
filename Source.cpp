@@ -11,8 +11,9 @@
 #include <math.h>
 #include <time.h>
 #include <iostream>
-#include <fstream>
-#include <random>
+//#include <fstream>
+//#include <random>
+//#include "random.h"
 
 using namespace std;
 
@@ -40,7 +41,7 @@ using namespace std;
 #define FuncNo			3					//最適化問題の種類
 #define RANGE			5.12				//最適化問題の定義域
 #define MRATE			0.9				//突然変異率
-#define CRATE			0.05				//交叉率
+#define CRATE			0.6				//交叉率
 #define MaxGeneration	100			//最大繰り返し回数
 #define DEalgorithmNo	5				//DEのアルゴリズム
 #define ExTime			20					//試行回数
@@ -59,8 +60,8 @@ double nVect[MaxPsize][MaxGsize];	//時刻T+1の個体（ベクトル）
 double nFitness[MaxPsize];				//時刻T+1の個体の評価値
 double gBestHistory[ExTime][MaxGeneration];	//各試行におけるgBestの履歴
 double pDiversity[ExTime][MaxGeneration];	//各試行における集団の多様性
-double Mrate[MaxPsize],cMrate=0.0;
-double Crate[MaxPsize],cCrate=0.0;
+double Mrate[MaxPsize], cMrate = 0.0;
+double Crate[MaxPsize], cCrate = 0.0;
 double C = 0.1;	//JADE のパラメータ
 
 int gTable[ExTime];					//最適解発見時の世代数
@@ -385,10 +386,11 @@ void DE_Operation(int pop1)
 		N = (int)(genrand_real1()*MaxGsize);
 		for (L = 0; L<MaxGsize; L++) {
 			if (L == 0 || genrand_real1() < CRATE) {
-				nVect[pop1][N] =	pVect1[pop1]+Mrate[pop1]*(gBestVector[N]-pVect1[N]) + Mrate[pop1] * (pVect1[pop1] - pVect2[pop1]);	//変更中
+				nVect[pop1][N] = pVect1[pop1] + Mrate[pop1] * (gBestVector[N] - pVect1[N]) + Mrate[pop1] * (pVect1[pop1] - pVect2[pop1]);	//変更中
 				if (nVect[pop1][N] < -RANGE) nVect[pop1][N] = pVect1[N] + genrand_real1() * (-RANGE - pVect1[N]);
 				if (nVect[pop1][N] >  RANGE) nVect[pop1][N] = pVect1[N] + genrand_real1() * (RANGE - pVect1[N]);
-			}else {
+			}
+			else {
 				nVect[pop1][N] = cVect[pop1][N];
 			}
 			N = (N + 1) % MaxGsize;
@@ -424,7 +426,7 @@ void Compare_Vector(void)
 //------------------------------------------------------------
 void Select_Elite_Vector(int itime, int gtime)
 {
-	int i;					//繰返し用変数.
+	int i;						//繰返し用変数.
 	int num;				//添字
 	double best;			//一時保存用
 	for (i = 0, num = 0, best = cFitness[0]; i<MaxPsize; i++) {
@@ -440,43 +442,67 @@ void Select_Elite_Vector(int itime, int gtime)
 }
 
 
+//分布の生成
+double rand_cauchy(double mu, double gamma) {
+	return mu + gamma * tan(M_PI*(genrand_real3() - 0.5));
+}
+double rand_normal(double mu, double sigma) {
+	double z = sqrt(-2.0*log(genrand_real3())) * sin(2.0*M_PI*genrand_real3());
+	return mu + sigma * z;
+}
+
+
 //JADE 作成中
+/*
 void Pameter_Filter(double Sf, double Scr) {
 	int i;
-	std::random_device seed_gen;//乱数の生成
-	std::default_random_engine engine(seed_gen());//擬似乱数の生成
+	//	std::random_device seed_gen;//乱数の生成
+	//	std::default_random_engine engine(seed_gen());//擬似乱数の生成
 	// 位置母数cMrate、尺度母数Sfで分布させる
-	std::cauchy_distribution<> cauchy_data(cMrate, Sf); //Sfが0超過でないとエラーが発生する
-//	std::cauchy_distribution<> cauchy_data(0.0, 1.0);
+	//	std::cauchy_distribution<> cauchy_data(cMrate, Sf); //Sfが0超過でないとエラーが発生する
+	//	std::cauchy_distribution<> cauchy_data(0.0, 1.0);
 	// 平均cCrate、標準偏差Scr^2で分布させる
-	std::normal_distribution<> nomal_data(cCrate, Scr*Scr);//Scrが0より大きくないとエラーが発生する
-//	std::normal_distribution<> nomal_data(0, 1.0);
+	//	std::normal_distribution<> nomal_data(cCrate, Scr*Scr);//Scrが0より大きくないとエラーが発生する
+	//	std::normal_distribution<> nomal_data(0, 1.0);
 
 	for (i = 0; i < MaxPsize; i++) {
 	reMrate:
-			//Mrate[i] = cauchy_data((unsigned int)genrand_int32);if (Mrate[i]>1 || Mrate[i]<0) goto	reMrate;//生成方法が不明
-			Mrate[i] = cauchy_data(engine);if (Mrate[i]>1 || Mrate[i]<0) goto	reMrate;//生成方法が不明
+		//Mrate[i] = cauchy_data((unsigned int)genrand_int32);if (Mrate[i]>1 || Mrate[i]<0) goto	reMrate;//生成方法が不明
+		//			Mrate[i] = cauchy_data(engine);if (Mrate[i]>1 || Mrate[i]<0) goto	reMrate;//生成方法が不明
+		Mrate[i] = rand_normal(cMrate, Sf); if (Mrate[i]>1 || Mrate[i]<0) goto	reMrate;//生成方法が不明
 	reCrate:
-		Crate[i] = nomal_data(engine); if (Crate[i]>1 || Crate[i]<0) goto	reCrate;//生成方法が不明
+		//		Crate[i] = nomal_data(engine); if (Crate[i]>1 || Crate[i]<0) goto	reCrate;//生成方法が不明
+		Crate[i] = rand_normal(cCrate, Scr*Scr); if (Crate[i]>1 || Crate[i]<0) goto	reCrate;//生成方法が不明
 	}
 }
+*/
+void Pameter_Filter(double Sf, double Scr) {
+	int i;
+	for (i = 0; i < MaxPsize; i++) {
+	reMrate:
+		Mrate[i] = rand_cauchy(cMrate, Sf);; if (Mrate[i]>1 || Mrate[i]<0) goto	reMrate;
+	reCrate:
+		Crate[i] = rand_normal(cCrate, Scr*Scr); if (Mrate[i]>1 || Mrate[i]<0) goto	reMrate;
+	}
+}
+
 
 //パラメータの更新	JADE 作成中
 void New_parameter() {
 	int i;
-	double Sn = 0, Sf = 1.0, Sf2 = 0, Scr =1.0;
-	for (i = 0; i < MaxPsize;i++) {
-		if (	fabs(nVect[i][MaxPsize])	>	fabs(cVect[i][MaxPsize])		) {
+	double Sn = 0, Sf = 1.0, Sf2 = 0, Scr = 1.0;
+	for (i = 0; i < MaxPsize; i++) {
+		if (fabs(nVect[i][MaxPsize])	>	fabs(cVect[i][MaxPsize])) {
 			Sn += 1;
-			Sf2 += Mrate[i]*Mrate[i];
+			Sf2 += Mrate[i] * Mrate[i];
 			Scr += Crate[i];
 		}
 	}
 	if (Sn != 0) {
 		cMrate = (1 - C)*cMrate + (C*Sf2 / Sf);
-		cCrate = (1 - C)*cCrate + ( (C*Scr )/ Sn );
+		cCrate = (1 - C)*cCrate + ((C*Scr) / Sn);
 	}
-	Pameter_Filter(Sf,Scr);
+	Pameter_Filter(Sf, Scr);
 }
 
 
@@ -515,7 +541,7 @@ void Calc_Diversity(int itime, int gtime)
 	double sum[MaxGsize];		//合計
 	double ave[MaxGsize];		//平均
 	double div;					//分散
-								//初期化
+	//初期化
 	for (i = 0; i<MaxGsize; i++) {
 		sum[i] = 0.0;
 		ave[i] = 0.0;
